@@ -22,22 +22,13 @@ go mod tidy
 **Variables de entorno**:
 - El proyecto usa `godotenv`. Crea un archivo `.env` en la raíz si necesitas configurar variables. Ejemplo mínimo:
 
-```env
-# .env (ejemplo)
-PORT=8080
-LOG_LEVEL=info
-```
-
 Ajusta según lo que espere `internals/config.go`.
 
 Se recomienda añadir la clave de la Weather API en el `.env` con la variable `WEATHER_API_KEY`. Ejemplo:
 
 ```env
 # .env (ejemplo con API key)
-PORT=8080
-LOG_LEVEL=info
 WEATHER_API_KEY=tu_api_key_aqui
-WEATHER_API_PROVIDER=OpenWeatherMap # opcional: nombre/endpoint del proveedor
 ```
 
 La aplicación usa la clave `WEATHER_API_KEY` para autenticar las peticiones a la Weather API. Revisa `internals/config.go` para ver nombres exactos y otros parámetros.
