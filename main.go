@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math"
 	"net/http"
 	"omar/sun/internals"
 	"os"
@@ -44,22 +45,37 @@ func main() {
 		panic(fmt.Sprintf("Failed to parse weather data: %v", err))
 	}
 
-	l, current, hours := weather.Location, weather.Current, weather.Forecast.ForecastDay[0].Hour
-	localTime := time.Unix(l.LocalTime, 0)
+	l, current, forecastDay := weather.Location, weather.Current, weather.Forecast.ForecastDay
 
 	fmt.Printf("%s, %s: %.1fC, %s\n", l.Name, l.Country, current.TempC, current.Condition.Text)
-	for _, hour := range hours {
-		date := time.Unix(hour.TimeEpoch, 0)
+	for day, hours := range forecastDay {
+		for _, hour := range hours.Hour {
+			date := time.Unix(hour.TimeEpoch, 0)
+			t := ""
+			redChance := int(255*hour.ChanceOfRain/100)
+			red := color.RGB(redChance,0,0).SprintFunc()
 
-		if date.Before(localTime) {
-			continue
+			if hour.TempC < 30 {
+				tBlue := int(255 * math.Abs(hour.TempC / 100 - 1))
+				blue := color.RGB(0, 0, tBlue).SprintFunc()
+				t = blue(hour.TempC, "C")
+			} else {
+				tYellow := int(255 * math.Abs(hour.TempC / 100 - 1))
+				yellow := color.RGB(tYellow, tYellow, 0).SprintFunc()
+				t = yellow(hour.TempC, "C")
+			}
+			
+			if date.Before(time.Now()) {
+				continue
+			}
+
+			if day == 0 {
+				fmt.Printf("%s - %s %s %s \n", date.Format("15:04"), t, hour.Condition.Text, red(hour.ChanceOfRain, "%"))
+				continue
+			} else if date.Format("15:04") == "00:00" {
+				fmt.Printf("%s - %s %s %s \n", date.Format("15:04"), t, hour.Condition.Text, red(hour.ChanceOfRain, "%"))
+				continue
+			}
 		}
-
-		if hour.ChanceOfRain > 50 {
-			color.Red(" %s - %.1fC %s %.0f%%\n", date.Format("15:04"), hour.TempC, hour.Condition.Text, hour.ChanceOfRain)
-			continue
-		}
-
-		fmt.Printf(" %s - %.1fC %s %.0f%%\n", date.Format("15:04"), hour.TempC, hour.Condition.Text, hour.ChanceOfRain)
-	}
+	} 
 }
