@@ -1,12 +1,11 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
-	"io"
+	"log"
 	"math"
-	"net/http"
 	"omar/sun/internals"
+	"omar/sun/internals/services"
 	"os"
 	"strings"
 	"time"
@@ -23,48 +22,31 @@ func main() {
 		location = strings.Join(os.Args[1:], "+")
 	}
 
-	apiURL := fmt.Sprintf("https://api.weatherapi.com/v1/forecast.json?key=%s&q=%s&days=2&aqi=yes&alerts=no", config.ApiKey, strings.TrimRight(location, " "))
-	res, err := http.Get(apiURL)
+	service := services.NewWeatherService()
+	weather, err := service.GetWeatherData(config.ApiKey, location)
 	if err != nil {
-		panic(fmt.Sprintf("Failed to fetch weather data: %v", err))
+		log.Fatal(err)
 	}
-	defer res.Body.Close()
+	
 
-	body, err := io.ReadAll(res.Body)
-	if err != nil {
-		panic(fmt.Sprintf("Failed to read response body: %v", err))
-	}
-
-	if res.StatusCode != 200 {
-		panic("Failed to get valid weather data: " + res.Status)
-	}
-
-	var weather internals.Weather
-	err = json.Unmarshal(body, &weather)
-	if err != nil {
-		panic(fmt.Sprintf("Failed to parse weather data: %v", err))
-	}
-
-	l, current, forecastDay := weather.Location, weather.Current, weather.Forecast.ForecastDay
-
-	fmt.Printf("%s, %s: %.1fC, %s\n", l.Name, l.Country, current.TempC, current.Condition.Text)
-	for day, hours := range forecastDay {
+	fmt.Printf("%s, %s: %.1fC, %s\n", weather.Location.Name, weather.Location.Country, weather.Current.TempC, weather.Current.Condition.Text)
+	for day, hours := range weather.Forecast.ForecastDay {
 		for _, hour := range hours.Hour {
 			date := time.Unix(hour.TimeEpoch, 0)
 			t := ""
-			redChance := int(255*hour.ChanceOfRain/100)
-			red := color.RGB(redChance,0,0).SprintFunc()
+			redChance := int(255 * hour.ChanceOfRain / 100)
+			red := color.RGB(redChance, 0, 0).SprintFunc()
 
 			if hour.TempC < 30 {
-				tBlue := int(255 * math.Abs(hour.TempC / 100 - 1))
+				tBlue := int(255 * math.Abs(hour.TempC/100-1))
 				blue := color.RGB(0, 0, tBlue).SprintFunc()
 				t = blue(hour.TempC, "C")
 			} else {
-				tYellow := int(255 * math.Abs(hour.TempC / 100 - 1))
+				tYellow := int(255 * math.Abs(hour.TempC/100-1))
 				yellow := color.RGB(tYellow, tYellow, 0).SprintFunc()
 				t = yellow(hour.TempC, "C")
 			}
-			
+
 			if date.Before(time.Now()) {
 				continue
 			}
@@ -77,5 +59,5 @@ func main() {
 				continue
 			}
 		}
-	} 
+	}
 }
